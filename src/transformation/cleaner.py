@@ -14,7 +14,7 @@ def clean_reuters(soup: BeautifulSoup) -> dict[str, str]:
     RuntimeError: If there is no valid description for the article.
 
   Returns:
-    dict: title and teaser as strings.
+    dict[str, str]: title and teaser as strings.
   """
   title_span = soup.find(attrs={'data-testid':'TitleHeading'})
 
@@ -36,6 +36,19 @@ def clean_reuters(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
+  """
+  Clean the raw HTML data for each article preview for the NPR website.
+
+  Args:
+    soup (BeautifulSoup): The data structure representing the parsed raw HTML data.
+
+  Raises:
+    RuntimeError: If there is no valid title for the article.
+    RuntimeError: If there is no valid teaser for the article.
+
+  Returns:
+    dict[str, str]: title and teaser as strings.
+  """
   title_h2 = soup.find('h2', {'class': 'title'})
 
   if not title_h2:

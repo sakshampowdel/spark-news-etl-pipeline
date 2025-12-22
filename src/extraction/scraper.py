@@ -6,6 +6,21 @@ from typing import List
 from extraction.models import BronzeRecord
 
 def start_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
+  """
+  Initializes a session by visiting a base URL before requesting the target data.
+
+  Args:
+    session (requests.Session): The current shared session with custom headers.
+    base_url (str): The homepage URL used to establish initial cookies/handshake.
+    target_url (str): The specific news feed endpoint to scrape.
+
+  Returns:
+    requests.Response: The HTTP response from the target URL if successful.
+
+  Raises:
+    requests.exceptions.HTTPError: If the target_url returns a 4xx or 5xx status code.
+    requests.exceptions.RequestException: For any other networking-related issues.
+  """
   # Pretend to be a real user
   session.get(base_url, timeout=10) 
   
@@ -19,10 +34,13 @@ def start_session(session: requests.Session, base_url: str, target_url: str) -> 
 
 def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
   """
-  Scrape reuters website for US news articles
+  Scrapes the Reuters US World news feed for raw article data.
+
+  Args:
+    session (requests.Session): The active session used for requests.
 
   Returns:
-    List[BronzeRecord]: A list of each article as a BronzeRecord
+    List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
   response = start_session(session, 'https://www.reuters.com', 'https://www.reuters.com/world/us/')
 
@@ -46,6 +64,15 @@ def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
   return results
 
 def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
+  """
+  Scrapes the NPR Politics section for raw article data.
+
+  Args:
+    session (requests.Session): The active session used for requests.
+
+  Returns:
+    List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
+  """
   response = start_session(session, 'https://www.npr.org', 'https://www.npr.org/sections/politics')
 
   soup = BeautifulSoup(response.text, 'html.parser')
@@ -68,6 +95,15 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
   return results
 
 def scrape_article_to_bronze() -> List[BronzeRecord]:
+  """
+  Orchestrates the extraction process across all defined news sources.
+
+  This function configures a shared session with realistic browser headers and 
+  iterates through all scraper functions to build a combined Bronze dataset.
+
+  Returns:
+    List[BronzeRecord]: A unified list of all raw records pulled from all sources.
+  """
   # Create a session object
   session = requests.Session()
   
@@ -81,7 +117,7 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   })
 
   sources = [
-    #scrape_reuters,
+    scrape_reuters,
     scrape_npr
   ]
 
