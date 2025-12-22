@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 
 from extraction.models import BronzeRecord, SilverRecord
 
-def clean_reuters(soup: BeautifulSoup) -> dict:
+def clean_reuters(soup: BeautifulSoup) -> dict[str, str]:
   """
   Clean the raw HTML data for each article preview for the Reuters website.
 
@@ -19,14 +19,14 @@ def clean_reuters(soup: BeautifulSoup) -> dict:
   title_span = soup.find(attrs={'data-testid':'TitleHeading'})
 
   if not title_span:
-    raise RuntimeError('Did not find valid title!')
+    raise RuntimeError('Reuters: Did not find valid title! (span)')
   
   title: str = title_span.get_text()
 
   description_p = soup.find(attrs={'data-testid':'Description'})
 
   if not description_p:
-    raise RuntimeError('Did not find valid description!')
+    raise RuntimeError('Reuters: Did not find valid description! (p)')
   
   description: str = description_p.get_text()
 
@@ -35,7 +35,7 @@ def clean_reuters(soup: BeautifulSoup) -> dict:
     'teaser': description
   }
 
-def clean_npr(soup: BeautifulSoup) -> dict:
+def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
   title_h2 = soup.find('h2')
 
   if not title_h2:
