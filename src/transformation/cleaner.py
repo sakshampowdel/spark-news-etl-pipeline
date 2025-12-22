@@ -35,6 +35,36 @@ def clean_reuters(soup: BeautifulSoup) -> dict:
     'teaser': description
   }
 
+def clean_npr(soup: BeautifulSoup) -> dict:
+  title_h2 = soup.find('h2')
+
+  if not title_h2:
+    raise RuntimeError('NPR: Did not find valid title! (h2)')
+  
+  title_a = title_h2.find('a')
+
+  if not title_a:
+    raise RuntimeError('NPR: Did not find valid title! (a)')
+  
+  title: str = title_a.get_text()
+
+  teaser_p = soup.find('p')
+
+  if not teaser_p:
+    raise RuntimeError('NPR: Did not find valid teaser! (p)')
+  
+  teaser_a = teaser_p.find('a')
+
+  if not teaser_a:
+    raise RuntimeError('NPR: Did not find valid teaser! (a)')
+  
+  teaser: str = teaser_a.get_text()
+
+  return {
+    'title': title,
+    'teaser': teaser
+  }
+
 def transform_bronze_to_silver(bronze: BronzeRecord) -> SilverRecord:
   """
   Transforms a BronzeRecord object to a SilverRecord object.
@@ -51,7 +81,8 @@ def transform_bronze_to_silver(bronze: BronzeRecord) -> SilverRecord:
   soup = BeautifulSoup(bronze.raw_html, 'html.parser')
 
   parsers = {
-    'Reuters': clean_reuters
+    'Reuters': clean_reuters,
+    'NPR': clean_npr
   }
 
   clean_func = parsers.get(bronze.source)
