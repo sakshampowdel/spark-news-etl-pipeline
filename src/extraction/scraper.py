@@ -8,7 +8,10 @@ from extraction.models import BronzeRecord
 
 def scrape_reuters() -> List[BronzeRecord]:
   """
-  Returns a list of BronzeRecords in JSON format from Reuters
+  Scrape reuters website for US news articles
+
+  Returns:
+    List[BronzeRecord]: A list of each article as a BronzeRecord
   """
   # Create a session object
   session = requests.Session()
