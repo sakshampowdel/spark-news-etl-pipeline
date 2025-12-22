@@ -42,8 +42,11 @@ def run_silver_layer(intput_path: str, output_path: str) -> None:
   if not bronze_records:
     raise RuntimeError('Error grabbing bronze records')
 
+  unique_map: dict[str, BronzeRecord] = {record.article_url: record for record in bronze_records}
+  unique_records: List[BronzeRecord]= list(unique_map.values())
+
   silver_records: List[SilverRecord] = (
-    [transform_bronze_to_silver(record) for record in bronze_records]
+    [transform_bronze_to_silver(record) for record in unique_records]
   )
   
   save_to_jsonl(silver_records, output_path, mode='w')
