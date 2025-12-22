@@ -24,7 +24,7 @@ def run_bronze_layer(output_path: str) -> None:
 
   save_to_jsonl(bronze_records, output_path, mode='a')
 
-def run_silver_layer(intput_path: str, output_path: str) -> None:
+def run_silver_layer(input_path: str, output_path: str) -> None:
   """
   Orchestrates the transformation of raw Bronze HTML records into 
   structured Silver records.
@@ -37,7 +37,7 @@ def run_silver_layer(intput_path: str, output_path: str) -> None:
     RuntimeError: If no records are found in the bronze source.
   """
   print('|--- Starting Silver Layer ---|')
-  bronze_records: List[BronzeRecord] = load_bronze_records(intput_path)
+  bronze_records: List[BronzeRecord] = load_bronze_records(input_path)
 
   if not bronze_records:
     raise RuntimeError('Error grabbing bronze records')
