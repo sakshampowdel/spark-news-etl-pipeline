@@ -3,6 +3,19 @@ from bs4 import BeautifulSoup
 from extraction.models import BronzeRecord, SilverRecord
 
 def clean_reuters(soup: BeautifulSoup) -> dict:
+  """
+  Clean the raw HTML data for each article preview for the Reuters website.
+
+  Args:
+    soup (BeautifulSoup): The data structure representing the parsed raw HTML data.
+
+  Raises:
+    RuntimeError: If there is no valid title for the article.
+    RuntimeError: If there is no valid description for the article.
+
+  Returns:
+    dict: title and teaser as strings.
+  """
   title_span = soup.find(attrs={'data-testid':'TitleHeading'})
 
   if not title_span:
@@ -23,6 +36,18 @@ def clean_reuters(soup: BeautifulSoup) -> dict:
   }
 
 def transform_bronze_to_silver(bronze: BronzeRecord) -> SilverRecord:
+  """
+  Transforms a BronzeRecord object to a SilverRecord object.
+
+  Args:
+    bronze (BronzeRecord): The BronzeRecord object to be transformed.
+
+  Raises:
+    RuntimeError: If a valid source was not specified.
+
+  Returns:
+    SilverRecord: A new object after cleaning up the BronzeRecord.
+  """
   soup = BeautifulSoup(bronze.raw_html, 'html.parser')
 
   parsers = {
