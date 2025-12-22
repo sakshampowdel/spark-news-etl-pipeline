@@ -16,7 +16,7 @@ def run_bronze_layer(output_path: str) -> None:
   save_to_jsonl(bronze_records, output_path, mode='a')
 
 def run_silver_layer(intput_path: str, output_path: str) -> None:
-  print('|--- Starting Bronze Layer ---|')
+  print('|--- Starting Silver Layer ---|')
   bronze_records: List[BronzeRecord] = load_bronze_records(intput_path)
 
   if not bronze_records:
