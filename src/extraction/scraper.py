@@ -5,10 +5,11 @@ from typing import List
 
 from extraction.models import BronzeRecord
 
-"""
-  Returns a list of BronzeRecords in JSON format from Reuters
-"""
+
 def scrape_reuters() -> List[BronzeRecord]:
+  """
+  Returns a list of BronzeRecords in JSON format from Reuters
+  """
   # Create a session object
   session = requests.Session()
   
