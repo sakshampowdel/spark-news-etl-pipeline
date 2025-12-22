@@ -60,7 +60,7 @@ def main():
   # '../data/silver/news_traffic_cleaned.jsonl'
   silver_output = str(root / 'data' / 'silver' / 'news_traffic_cleaned.jsonl')
 
-  #run_bronze_layer(bronze_output)
+  run_bronze_layer(bronze_output)
   run_silver_layer(bronze_output, silver_output)
 
 if __name__ == "__main__":
