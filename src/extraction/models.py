@@ -18,3 +18,6 @@ class SilverRecord:
   teaser: str
   source: str
   ingestion_timestamp: str = datetime.now().isoformat()
+
+  def to_dict(self):
+    return asdict(self)
