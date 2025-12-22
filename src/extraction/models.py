@@ -10,3 +10,11 @@ class BronzeRecord:
 
   def to_dict(self):
     return asdict(self)
+
+@dataclass
+class SilverRecord:
+  article_url: str
+  title: str
+  teaser: str
+  source: str
+  ingestion_timestamp: str = datetime.now().isoformat()
