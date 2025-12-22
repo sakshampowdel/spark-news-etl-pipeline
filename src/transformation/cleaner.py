@@ -36,7 +36,7 @@ def clean_reuters(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
-  title_h2 = soup.find('h2')
+  title_h2 = soup.find('h2', {'class': 'title'})
 
   if not title_h2:
     raise RuntimeError('NPR: Did not find valid title! (h2)')
@@ -48,7 +48,7 @@ def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
   
   title: str = title_a.get_text()
 
-  teaser_p = soup.find('p')
+  teaser_p = soup.find('p', {'class': 'teaser'})
 
   if not teaser_p:
     raise RuntimeError('NPR: Did not find valid teaser! (p)')
