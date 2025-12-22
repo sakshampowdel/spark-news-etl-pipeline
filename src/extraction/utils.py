@@ -29,7 +29,7 @@ def load_bronze_records(filepath: str) -> List[BronzeRecord]:
     filepath (str): The location of the jsonl file.
 
   Returns:
-    List[BronzeRecord]: The list of BronzeRecord objects read from the jsonl file.
+    List[BronzeRecord]: The list of BronzeRecord objects read from the jsonl file or empty if file not found.
   """
   records: List[BronzeRecord] = []
 
