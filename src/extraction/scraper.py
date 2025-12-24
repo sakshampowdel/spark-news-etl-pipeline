@@ -78,7 +78,7 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
   soup = BeautifulSoup(response.text, 'html.parser')
 
   # Grab all articles in the feed
-  articles = soup.find_all('article', {'class':'item'})
+  articles = soup.find_all('article', attrs={'class':'item'})
 
   results: List[BronzeRecord] = []
   for article in articles:
@@ -92,6 +92,28 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
       record = BronzeRecord(article_url, str(article), 'NPR')
       results.append(record)
 
+  return results
+
+def scrape_wapo(session: requests.Session) -> List[BronzeRecord]:
+  response = start_session(session, 'https://www.washingtonpost.com', 'https://www.washingtonpost.com/politics/')
+
+  soup = BeautifulSoup(response.text, 'html.parser')
+
+  # Grab all articles in the feed
+  articles = soup.find_all('div', attrs={'data-feature-id':'homepage/story'})
+
+  results: List[BronzeRecord] = []
+  for article in articles:
+    # Grab the href link holder
+    link_a = article.find('a')
+
+    if link_a and link_a.has_attr('href'):
+      # Transform to url
+      article_url: str = str(link_a.get('href'))
+
+      record = BronzeRecord(article_url, str(article), 'The Washington Post')
+      results.append(record)
+  
   return results
 
 def scrape_article_to_bronze() -> List[BronzeRecord]:
@@ -118,7 +140,8 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
 
   sources = [
     scrape_reuters,
-    scrape_npr
+    scrape_npr,
+    scrape_wapo
   ]
 
   results: List[BronzeRecord] = []
