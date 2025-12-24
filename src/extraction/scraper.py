@@ -94,6 +94,7 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
 
   return results
 
+# TODO: Refactor to Playwright. Current BS4 method is blocked by WaPo
 def scrape_wapo(session: requests.Session) -> List[BronzeRecord]:
   response = start_session(session, 'https://www.washingtonpost.com', 'https://www.washingtonpost.com/politics/')
 
@@ -141,7 +142,7 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   sources = [
     scrape_reuters,
     scrape_npr,
-    scrape_wapo
+    #scrape_wapo
   ]
 
   results: List[BronzeRecord] = []
