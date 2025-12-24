@@ -49,7 +49,7 @@ def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
   Returns:
     dict[str, str]: title and teaser as strings.
   """
-  title_h2 = soup.find('h2', {'class': 'title'})
+  title_h2 = soup.find('h2', attrs={'class': 'title'})
 
   if not title_h2:
     raise RuntimeError('NPR: Did not find valid title! (h2)')
@@ -61,7 +61,7 @@ def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
   
   title: str = title_a.get_text()
 
-  teaser_p = soup.find('p', {'class': 'teaser'})
+  teaser_p = soup.find('p', attrs={'class': 'teaser'})
 
   if not teaser_p:
     raise RuntimeError('NPR: Did not find valid teaser! (p)')
@@ -72,6 +72,26 @@ def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
     raise RuntimeError('NPR: Did not find valid teaser! (a)')
   
   teaser: str = teaser_a.get_text()
+
+  return {
+    'title': title,
+    'teaser': teaser
+  }
+
+def clean_wapo(soup: BeautifulSoup) -> dict[str, str]:
+  title_h3 = soup.find('h3', attrs={'data-testid':'card-title'})
+
+  if not title_h3:
+    raise RuntimeError('The Washington Post: Did not find valid title! (h3)')
+
+  title: str = title_h3.get_text()
+
+  teaser_p = soup.find('p')
+
+  if not teaser_p:
+    raise RuntimeError('The Washington Post: Did not find valid teaser! (p)')
+  
+  teaser = teaser_p.get_text()
 
   return {
     'title': title,
@@ -95,7 +115,8 @@ def transform_bronze_to_silver(bronze: BronzeRecord) -> SilverRecord:
 
   parsers = {
     'Reuters': clean_reuters,
-    'NPR': clean_npr
+    'NPR': clean_npr,
+    'The Washington Post': clean_wapo
   }
 
   clean_func = parsers.get(bronze.source)
