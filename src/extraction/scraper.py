@@ -163,10 +163,15 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
     try:
       print(f'Running light scraper: {scrape_func.__name__}...')
       data = scrape_func(session)
-      results.extend(data)
+
+      if data:
+        results.extend(data)
+        print(f'Successfully scraped {len(data)} records.')
+      else:
+        print(f'Warning: {scrape_func.__name__} returned 0 results!')
+      
     except Exception as e:
       print(f'Error in {scrape_func.__name__}: {e}')
-      continue
   
 
   with sync_playwright() as pw:
@@ -174,12 +179,17 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
 
     for scrape_func in heavy_sources:
       try:
-        print(f'Running heavy scraper: {scrape_func.__name__}...')
+        print(f'Running light scraper: {scrape_func.__name__}...')
         data = scrape_func(browser)
-        results.extend(data)
+
+        if data:
+          results.extend(data)
+          print(f'Successfully scraped {len(data)} records.')
+        else:
+          print(f'Warning: {scrape_func.__name__} returned 0 results!')
+        
       except Exception as e:
         print(f'Error in {scrape_func.__name__}: {e}')
-        continue
     
   
   return results
