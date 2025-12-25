@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright, Browser
 import requests
 from urllib.parse import urljoin
 from typing import List
@@ -95,26 +96,29 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
   return results
 
 # TODO: Refactor to Playwright. Current BS4 method is blocked by WaPo
-def scrape_wapo(session: requests.Session) -> List[BronzeRecord]:
-  response = start_session(session, 'https://www.washingtonpost.com', 'https://www.washingtonpost.com/politics/')
+def scrape_wapo(browser: Browser) -> List[BronzeRecord]:
+  context = browser.new_context(
+    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  )
 
-  soup = BeautifulSoup(response.text, 'html.parser')
+  page = context.new_page()
+  page.goto('https://www.washingtonpost.com/politics/', wait_until='domcontentloaded')
 
   # Grab all articles in the feed
-  articles = soup.find_all('div', attrs={'data-feature-id':'homepage/story'})
+  articles = page.locator('div[data-feature-id="homepage/story"]').all()
 
   results: List[BronzeRecord] = []
   for article in articles:
-    # Grab the href link holder
-    link_a = article.find('a')
+    html_fragment = article.inner_html()
+    link_a = article.locator('a').last
+    href = link_a.get_attribute('href')
 
-    if link_a and link_a.has_attr('href'):
-      # Transform to url
-      article_url: str = str(link_a.get('href'))
-
-      record = BronzeRecord(article_url, str(article), 'The Washington Post')
+    if href:
+      record = BronzeRecord(href, html_fragment, 'The Washington Post')
       results.append(record)
   
+  context.close()
+
   return results
 
 def scrape_article_to_bronze() -> List[BronzeRecord]:
@@ -139,21 +143,38 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
     'DNT': '1'
   })
 
-  sources = [
-    scrape_reuters,
-    scrape_npr,
-    #scrape_wapo
+  light_sources = [
+    #scrape_reuters,
+    #scrape_npr,
+  ]
+
+  heavy_sources = [
+    scrape_wapo
   ]
 
   results: List[BronzeRecord] = []
 
-  for scrape_func in sources:
+  for scrape_func in light_sources:
     try:
-      print(f'Running scraper: {scrape_func.__name__}...')
+      print(f'Running light scraper: {scrape_func.__name__}...')
       data = scrape_func(session)
       results.extend(data)
     except Exception as e:
       print(f'Error in {scrape_func.__name__}: {e}')
       continue
+  
+
+  with sync_playwright() as pw:
+    browser = pw.chromium.launch(headless=False)
+
+    for scrape_func in heavy_sources:
+      try:
+        print(f'Running heavy scraper: {scrape_func.__name__}...')
+        data = scrape_func(browser)
+        results.extend(data)
+      except Exception as e:
+        print(f'Error in {scrape_func.__name__}: {e}')
+        continue
+    
   
   return results
