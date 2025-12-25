@@ -170,7 +170,7 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   
 
   with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = pw.chromium.launch(headless=False)
 
     for scrape_func in heavy_sources:
       try:
