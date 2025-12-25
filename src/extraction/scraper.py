@@ -6,7 +6,7 @@ from typing import List
 
 from extraction.models import BronzeRecord
 
-def start_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
+def start_light_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
   """
   Initializes a session by visiting a base URL before requesting the target data.
 
@@ -53,7 +53,7 @@ def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
   Returns:
     List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
-  response = start_session(session, 'https://www.reuters.com', 'https://www.reuters.com/world/us/')
+  response = start_light_session(session, 'https://www.reuters.com', 'https://www.reuters.com/world/us/')
 
   soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -84,7 +84,7 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
   Returns:
     List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
-  response = start_session(session, 'https://www.npr.org', 'https://www.npr.org/sections/politics')
+  response = start_light_session(session, 'https://www.npr.org', 'https://www.npr.org/sections/politics')
 
   soup = BeautifulSoup(response.text, 'html.parser')
 
