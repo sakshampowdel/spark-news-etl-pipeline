@@ -33,6 +33,16 @@ def start_session(session: requests.Session, base_url: str, target_url: str) -> 
 
   return response
 
+def start_heavy_session(browser: Browser, target_url: str):
+  context = browser.new_context(
+    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  )
+
+  page = context.new_page()
+  page.goto(target_url, wait_until='domcontentloaded')
+
+  return context, page
+
 def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
   """
   Scrapes the Reuters US World news feed for raw article data.
@@ -97,12 +107,7 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
 
 # TODO: Refactor to Playwright. Current BS4 method is blocked by WaPo
 def scrape_wapo(browser: Browser) -> List[BronzeRecord]:
-  context = browser.new_context(
-    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-  )
-
-  page = context.new_page()
-  page.goto('https://www.washingtonpost.com/politics/', wait_until='domcontentloaded')
+  context, page = start_heavy_session(browser, 'https://www.washingtonpost.com/politics/')
 
   # Grab all articles in the feed
   articles = page.locator('div[data-feature-id="homepage/story"]').all()
@@ -144,8 +149,8 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   })
 
   light_sources = [
-    #scrape_reuters,
-    #scrape_npr,
+    scrape_reuters,
+    scrape_npr,
   ]
 
   heavy_sources = [
@@ -165,7 +170,7 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   
 
   with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=False)
+    browser = pw.chromium.launch(headless=True)
 
     for scrape_func in heavy_sources:
       try:
