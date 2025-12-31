@@ -178,7 +178,7 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
 
     for scrape_func in heavy_sources:
       try:
-        print(f'Running light scraper: {scrape_func.__name__}...')
+        print(f'Running heavy scraper: {scrape_func.__name__}...')
         data = scrape_func(browser)
 
         if data:
