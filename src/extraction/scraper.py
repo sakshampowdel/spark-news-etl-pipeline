@@ -2,9 +2,18 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, Browser
 import requests
 from urllib.parse import urljoin
-from typing import List
+from typing import List, Generator
+from concurrent.futures import ThreadPoolExecutor
+import logging
 
 from extraction.models import BronzeRecord
+
+# Configure logging format: Timestamp - Name - Level - Message
+logging.basicConfig(
+  level=logging.INFO,
+  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger("extraction")
 
 def start_light_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
   """
@@ -185,45 +194,43 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
 
   results: List[BronzeRecord] = []
 
-  for scrape_func in light_sources:
-    try:
-      print(f'Running light scraper: {scrape_func.__name__}...')
-      data = scrape_func(session)
+  logger.info("Initializing parallel extraction for light sources...")
 
-      if data:
-        results.extend(data)
-        print(f'Successfully scraped {len(data)} records.')
-      else:
-        print(f'Warning: {scrape_func.__name__} returned 0 results!')
-      
-    except Exception as e:
-      print(f'Error in {scrape_func.__name__}: {e}')
+  with ThreadPoolExecutor(max_workers=len(light_sources)) as executor:
+    future_to_func = {executor.submit(func, session): func.__name__ for func in light_sources}
+    
+    for future in future_to_func:
+      func_name = future_to_func[future]
+      try:
+        data = future.result()
+        if data:
+          results.extend(data)
+          logger.info(f"{func_name}: Successfully scraped {len(data)} records.")
+        else:
+          logger.warning(f"{func_name}: Returned 0 results.")
+      except Exception as e:
+        logger.error(f"{func_name}: Failed with error: {str(e)}")
   
-
   with sync_playwright() as pw:
     browser = pw.chromium.launch(
       headless=True,
       args=[
-        "--disable-http2",                        # Forces HTTP/1.1 to avoid the protocol error
-        "--disable-blink-features=AutomationControlled", # Hides the 'navigator.webdriver' flag
-        "--no-sandbox",                           # Required for Docker
-        "--disable-dev-shm-usage"                 # Prevents memory crashes in containers
+        "--disable-http2",
+        "--no-sandbox"
       ]
     )
 
     for scrape_func in heavy_sources:
+      logger.info(f"Running heavy scraper: {scrape_func.__name__}...")
       try:
-        print(f'Running heavy scraper: {scrape_func.__name__}...')
         data = scrape_func(browser)
-
         if data:
           results.extend(data)
-          print(f'Successfully scraped {len(data)} records.')
+          logger.info(f"{scrape_func.__name__}: Successfully scraped {len(data)} records.")
         else:
-          print(f'Warning: {scrape_func.__name__} returned 0 results!')
-        
+          logger.warning(f"{scrape_func.__name__}: Returned 0 results.")
       except Exception as e:
-        print(f'Error in {scrape_func.__name__}: {e}')
+        logger.error(f"{scrape_func.__name__}: Failed with error: {str(e)}")
     
   
   return results
