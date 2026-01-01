@@ -5,6 +5,7 @@ from extraction.models import BronzeRecord, SilverRecord
 from extraction.scraper import scrape_article_to_bronze
 from extraction.utils import save_to_jsonl, load_bronze_records
 from transformation.cleaner import transform_bronze_to_silver
+from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
 
 def run_bronze_layer(output_path: str) -> None:
   """
@@ -51,6 +52,33 @@ def run_silver_layer(input_path: str, output_path: str) -> None:
   
   save_to_jsonl(silver_records, output_path, mode='w')
 
+def run_gold_layer(input_path: str, output_dir: str) -> None:
+  print('|--- Starting Gold Layer ---|')
+  spark = create_spark_session()
+  
+  try:
+    silver_df = spark.read.json(input_path)
+    
+    if silver_df.isEmpty():
+      print("Warning: Silver layer is empty.")
+      return
+
+    # Write Daily Stats - Partitioned by Date
+    print("Processing: Daily Source Stats...")
+    stats_df = generate_source_stats(silver_df)
+    stats_df.write.mode("overwrite").partitionBy("date").parquet(f"{output_dir}/daily_source_stats")
+
+    # Write Keyword Trends
+    print("Processing: Keyword Trends...")
+    keywords_df = generate_top_keywords(silver_df)
+    keywords_df.write.mode("overwrite").parquet(f"{output_dir}/keyword_trends")
+    
+    print("\n--- TOP 10 TRENDING KEYWORDS ---")
+    keywords_df.show()
+            
+  finally:
+    spark.stop()
+
 def main():
   root = pathlib.Path(__file__).parent.parent.resolve()
 
@@ -60,8 +88,12 @@ def main():
   # '../data/silver/news_traffic_cleaned.jsonl'
   silver_output = str(root / 'data' / 'silver' / 'news_traffic_cleaned.jsonl')
 
+  # '../data/gold/'
+  gold_output_dir = str(root / 'data' / 'gold')
+
   run_bronze_layer(bronze_output)
   run_silver_layer(bronze_output, silver_output)
+  run_gold_layer(silver_output, gold_output_dir)
 
 if __name__ == "__main__":
   main()
