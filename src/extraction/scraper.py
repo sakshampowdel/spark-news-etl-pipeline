@@ -34,6 +34,16 @@ def start_light_session(session: requests.Session, base_url: str, target_url: st
   return response
 
 def start_heavy_session(browser: Browser, target_url: str):
+  """
+  Initializes a Playwright browser context with stealth headers and navigates to the target.
+
+  Args:
+    browser (Browser): The launched Playwright browser instance.
+    target_url (str): The specific news feed endpoint to scrape.
+
+  Returns:
+    Tuple[BrowserContext, Page]: The active browser context and the loaded page object.
+  """
   context = browser.new_context(
     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     viewport={'width': 1920, 'height': 1080}
@@ -114,6 +124,15 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
   return results
 
 def scrape_wapo(browser: Browser) -> List[BronzeRecord]:
+  """
+  Scrapes The Washington Post Politics section for raw article data using Playwright.
+
+  Args:
+    browser (Browser): The active Playwright browser instance.
+
+  Returns:
+    List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
+  """
   context, page = start_heavy_session(browser, 'https://www.washingtonpost.com/politics/')
 
   # Grab all articles in the feed

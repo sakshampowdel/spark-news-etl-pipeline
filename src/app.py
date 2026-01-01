@@ -10,12 +10,12 @@ from transformation.analyzer import create_spark_session, generate_source_stats,
 def run_bronze_layer(output_path: str) -> None:
   """
   Orchestrates the scraping of news articles into structured Bronze records.
-  
+
   Args:
-    output_path: The file path where the .jsonl data will be saved.
-      
+    output_path (str): The file path where the .jsonl data will be saved.
+
   Raises:
-    RuntimeError: If no records are created scraping the articles.
+    RuntimeError: If no records are created while scraping the articles.
   """
   print('|--- Starting Bronze Layer ---|')
   bronze_records: List[BronzeRecord] = scrape_article_to_bronze()
@@ -27,13 +27,12 @@ def run_bronze_layer(output_path: str) -> None:
 
 def run_silver_layer(input_path: str, output_path: str) -> None:
   """
-  Orchestrates the transformation of raw Bronze HTML records into 
-  structured Silver records.
-  
+  Orchestrates the transformation of raw Bronze HTML records into structured Silver records.
+
   Args:
-    input_path: The file path to the raw .jsonl bronze data.
-    output_path: The file path where the cleaned .jsonl data will be saved.
-      
+    input_path (str): The file path to the raw .jsonl bronze data.
+    output_path (str): The file path where the cleaned .jsonl data will be saved.
+
   Raises:
     RuntimeError: If no records are found in the bronze source.
   """
@@ -53,6 +52,13 @@ def run_silver_layer(input_path: str, output_path: str) -> None:
   save_to_jsonl(silver_records, output_path, mode='w')
 
 def run_gold_layer(input_path: str, output_dir: str) -> None:
+  """
+  Orchestrates the aggregation of Silver records into Gold analytical tables using Spark.
+
+  Args:
+    input_path (str): The file path to the cleaned .jsonl silver data.
+    output_dir (str): The directory where the Gold Parquet tables will be saved.
+  """
   print('|--- Starting Gold Layer ---|')
   spark = create_spark_session()
   
@@ -80,6 +86,9 @@ def run_gold_layer(input_path: str, output_dir: str) -> None:
     spark.stop()
 
 def main():
+  """
+  Entry point for the news ETL pipeline that resolves local paths and triggers all layers.
+  """
   root = pathlib.Path(__file__).parent.parent.resolve()
 
   # '../data/bronze/news_traffic_raw.jsonl'

@@ -79,6 +79,19 @@ def clean_npr(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def clean_wapo(soup: BeautifulSoup) -> dict[str, str]:
+  """
+  Clean the raw HTML data for each article preview for The Washington Post website.
+
+  Args:
+    soup (BeautifulSoup): The data structure representing the parsed raw HTML data.
+
+  Raises:
+    RuntimeError: If there is no valid title for the article.
+    RuntimeError: If there is no valid teaser for the article.
+
+  Returns:
+    dict[str, str]: title and teaser as strings.
+  """
   title_h3 = soup.find('h3', attrs={'data-testid':'card-title'})
 
   if not title_h3:
