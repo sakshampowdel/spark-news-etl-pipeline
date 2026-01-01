@@ -1,10 +1,11 @@
+import requests
+import logging
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, Browser
-import requests
 from urllib.parse import urljoin
 from typing import List, Generator
 from concurrent.futures import ThreadPoolExecutor
-import logging
+
 
 from extraction.models import BronzeRecord
 
@@ -66,11 +67,13 @@ def start_heavy_session(browser: Browser, target_url: str):
     "sec-ch-ua-platform": '"Windows"'
   })
 
+  page.route("**/*.{png,jpg,jpeg,svg,css,woff2}", lambda route: route.abort())
+
   page.goto(target_url, wait_until='domcontentloaded')
 
   return context, page
 
-def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
+def scrape_reuters(session: requests.Session) -> Generator[BronzeRecord, None, None]:
   """
   Scrapes the Reuters US World news feed for raw article data.
 
@@ -81,27 +84,18 @@ def scrape_reuters(session: requests.Session) -> List[BronzeRecord]:
     List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
   response = start_light_session(session, 'https://www.reuters.com', 'https://www.reuters.com/world/us/')
-
   soup = BeautifulSoup(response.text, 'html.parser')
-
-  # Grab all articles in the feed
   articles = soup.find_all('li', attrs={'data-testid':'FeedListItem'})
 
-  results: List[BronzeRecord] = []
   for article in articles:
-    # Grab the title div
     link_div = article.find(attrs={'data-testid':'TitleLink'})
 
     if link_div and link_div.has_attr('href'):
-      # Transform to url
       article_url: str = urljoin('https://www.reuters.com', str(link_div.get('href')))
 
-      record = BronzeRecord(article_url, str(article), 'Reuters')
-      results.append(record)
+      yield BronzeRecord(article_url, str(article), 'Reuters')
 
-  return results
-
-def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
+def scrape_npr(session: requests.Session) -> Generator[BronzeRecord, None, None]:
   """
   Scrapes the NPR Politics section for raw article data.
 
@@ -112,27 +106,18 @@ def scrape_npr(session: requests.Session) -> List[BronzeRecord]:
     List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
   response = start_light_session(session, 'https://www.npr.org', 'https://www.npr.org/sections/politics')
-
   soup = BeautifulSoup(response.text, 'html.parser')
-
-  # Grab all articles in the feed
   articles = soup.find_all('article', attrs={'class':'item'})
 
-  results: List[BronzeRecord] = []
   for article in articles:
-    # Grab the href link holder
     link_a = article.find('a')
 
     if link_a and link_a.has_attr('href'):
-      # Transform to url
       article_url: str = str(link_a.get('href'))
 
-      record = BronzeRecord(article_url, str(article), 'NPR')
-      results.append(record)
+      yield BronzeRecord(article_url, str(article), 'NPR')
 
-  return results
-
-def scrape_wapo(browser: Browser) -> List[BronzeRecord]:
+def scrape_wapo(browser: Browser) -> Generator[BronzeRecord, None, None]:
   """
   Scrapes The Washington Post Politics section for raw article data using Playwright.
 
@@ -143,23 +128,17 @@ def scrape_wapo(browser: Browser) -> List[BronzeRecord]:
     List[BronzeRecord]: A list of objects containing the article URL and raw HTML fragment.
   """
   context, page = start_heavy_session(browser, 'https://www.washingtonpost.com/politics/')
-
-  # Grab all articles in the feed
   articles = page.locator('div[data-feature-id="homepage/story"]').all()
 
-  results: List[BronzeRecord] = []
   for article in articles:
     html_fragment = article.inner_html()
     link_a = article.locator('a').last
     href = link_a.get_attribute('href')
 
     if href:
-      record = BronzeRecord(href, html_fragment, 'The Washington Post')
-      results.append(record)
+      yield BronzeRecord(href, html_fragment, 'The Washington Post')
   
   context.close()
-
-  return results
 
 def scrape_article_to_bronze() -> List[BronzeRecord]:
   """
@@ -198,39 +177,42 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
 
   with ThreadPoolExecutor(max_workers=len(light_sources)) as executor:
     future_to_func = {executor.submit(func, session): func.__name__ for func in light_sources}
-    
+        
     for future in future_to_func:
       func_name = future_to_func[future]
       try:
-        data = future.result()
-        if data:
-          results.extend(data)
-          logger.info(f"{func_name}: Successfully scraped {len(data)} records.")
-        else:
-          logger.warning(f"{func_name}: Returned 0 results.")
+        generator = future.result()
+        count = 0
+
+        for record in generator:
+          results.append(record)
+          count += 1
+
+        logger.info(f"{func_name}: Successfully yielded {count} records.")
       except Exception as e:
-        logger.error(f"{func_name}: Failed with error: {str(e)}")
+        logger.error(f"{func_name}: Failed with error: {str(e)}.")
   
   with sync_playwright() as pw:
     browser = pw.chromium.launch(
       headless=True,
       args=[
-        "--disable-http2",
-        "--no-sandbox"
+        '--disable-http2',
+        '--no-sandbox'
       ]
     )
 
     for scrape_func in heavy_sources:
       logger.info(f"Running heavy scraper: {scrape_func.__name__}...")
       try:
-        data = scrape_func(browser)
-        if data:
-          results.extend(data)
-          logger.info(f"{scrape_func.__name__}: Successfully scraped {len(data)} records.")
-        else:
-          logger.warning(f"{scrape_func.__name__}: Returned 0 results.")
+        generator = scrape_func(browser)
+        count = 0
+
+        for record in generator:
+          results.append(record)
+          count += 1
+
+        logger.info(f"{scrape_func.__name__}: Successfully yielded {count} records.")
       except Exception as e:
-        logger.error(f"{scrape_func.__name__}: Failed with error: {str(e)}")
+        logger.error(f"{scrape_func.__name__}: Failed with error: {str(e)}.")
     
-  
   return results
