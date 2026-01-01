@@ -35,10 +35,18 @@ def start_light_session(session: requests.Session, base_url: str, target_url: st
 
 def start_heavy_session(browser: Browser, target_url: str):
   context = browser.new_context(
-    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    viewport={'width': 1920, 'height': 1080}
   )
 
   page = context.new_page()
+
+  page.set_extra_http_headers({
+    "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"'
+  })
+
   page.goto(target_url, wait_until='domcontentloaded')
 
   return context, page
@@ -174,7 +182,15 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   
 
   with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=False)
+    browser = pw.chromium.launch(
+      headless=True,
+      args=[
+        "--disable-http2",                        # Forces HTTP/1.1 to avoid the protocol error
+        "--disable-blink-features=AutomationControlled", # Hides the 'navigator.webdriver' flag
+        "--no-sandbox",                           # Required for Docker
+        "--disable-dev-shm-usage"                 # Prevents memory crashes in containers
+      ]
+    )
 
     for scrape_func in heavy_sources:
       try:
