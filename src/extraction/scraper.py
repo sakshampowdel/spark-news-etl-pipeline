@@ -1,11 +1,11 @@
 import requests
 import logging
+import json
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, Browser
 from urllib.parse import urljoin
-from typing import List, Generator
+from typing import Generator
 from concurrent.futures import ThreadPoolExecutor
-
 
 from extraction.models import BronzeRecord
 
@@ -32,13 +32,10 @@ def start_light_session(session: requests.Session, base_url: str, target_url: st
     requests.exceptions.HTTPError: If the target_url returns a 4xx or 5xx status code.
     requests.exceptions.RequestException: For any other networking-related issues.
   """
-  # Pretend to be a real user
   session.get(base_url, timeout=10) 
   
-  # Now try the actual target URL
   response = session.get(target_url, timeout=10)
 
-  # Raise exception if error
   response.raise_for_status()
 
   return response
@@ -140,7 +137,7 @@ def scrape_wapo(browser: Browser) -> Generator[BronzeRecord, None, None]:
   
   context.close()
 
-def scrape_article_to_bronze() -> List[BronzeRecord]:
+def scrape_article_to_bronze(file_handle) -> int:
   """
   Orchestrates the extraction process across all defined news sources.
 
@@ -150,10 +147,8 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
   Returns:
     List[BronzeRecord]: A unified list of all raw records pulled from all sources.
   """
-  # Create a session object
   session = requests.Session()
   
-  # Pretend to be a real agent
   session.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -161,6 +156,8 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
     'Referer': 'https://www.google.com/',
     'DNT': '1'
   })
+
+  total_count = 0
 
   light_sources = [
     scrape_reuters,
@@ -171,24 +168,24 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
     scrape_wapo
   ]
 
-  results: List[BronzeRecord] = []
-
   logger.info("Initializing parallel extraction for light sources...")
 
   with ThreadPoolExecutor(max_workers=len(light_sources)) as executor:
     future_to_func = {executor.submit(func, session): func.__name__ for func in light_sources}
-        
+    
     for future in future_to_func:
       func_name = future_to_func[future]
+
       try:
         generator = future.result()
         count = 0
 
         for record in generator:
-          results.append(record)
+          file_handle.write(json.dumps(record.to_dict()) + '\n')
           count += 1
-
-        logger.info(f"{func_name}: Successfully yielded {count} records.")
+        
+        total_count += count
+        logger.info(f"{func_name}: Successfully streamed {count} records.")
       except Exception as e:
         logger.error(f"{func_name}: Failed with error: {str(e)}.")
   
@@ -201,18 +198,19 @@ def scrape_article_to_bronze() -> List[BronzeRecord]:
       ]
     )
 
+    logger.info(f"Running heavy scrapers...")
     for scrape_func in heavy_sources:
-      logger.info(f"Running heavy scraper: {scrape_func.__name__}...")
       try:
         generator = scrape_func(browser)
         count = 0
 
         for record in generator:
-          results.append(record)
+          file_handle.write(json.dumps(record.to_dict()) + '\n')
           count += 1
-
-        logger.info(f"{scrape_func.__name__}: Successfully yielded {count} records.")
+        
+        total_count += count
+        logger.info(f"{scrape_func.__name__}: Successfully streamed {count} records.")
       except Exception as e:
         logger.error(f"{scrape_func.__name__}: Failed with error: {str(e)}.")
     
-  return results
+  return total_count
