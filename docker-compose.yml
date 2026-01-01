@@ -1,0 +1,14 @@
+services:
+  news-pipeline:
+    build: .
+    container_name: news-etl-app
+    # --- CRITICAL FOR PLAYWRIGHT ---
+    ipc: host # Shared memory to prevent Chromium crashes
+    init: true # Prevents zombie browser processes
+    # ------------------------------
+    volumes:
+      - ./data:/home/newsuser/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      # We tell Spark to run in 'local' mode inside this container for now
+      - SPARK_LOCAL_IP=127.0.0.1
