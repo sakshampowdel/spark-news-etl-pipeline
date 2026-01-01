@@ -1,11 +1,19 @@
 from typing import List
 import pathlib
+import logging
+import os
 
 from extraction.models import BronzeRecord, SilverRecord
 from extraction.scraper import scrape_article_to_bronze
 from extraction.utils import save_to_jsonl, load_bronze_records
 from transformation.cleaner import transform_bronze_to_silver
 from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
+
+logging.basicConfig(
+  level=logging.INFO,
+  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger("main")
 
 def run_bronze_layer(output_path: str) -> None:
   """
@@ -17,13 +25,17 @@ def run_bronze_layer(output_path: str) -> None:
   Raises:
     RuntimeError: If no records are created while scraping the articles.
   """
-  print('|--- Starting Bronze Layer ---|')
-  bronze_records: List[BronzeRecord] = scrape_article_to_bronze()
+  logger.info("Starting Bronze Layer...")
+  os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-  if not bronze_records:
-    raise RuntimeError('Error scraping bronze records')
+  with open(output_path, 'a', encoding='utf-8') as f:
+    records_saved: int = scrape_article_to_bronze(f)
 
-  save_to_jsonl(bronze_records, output_path, mode='a')
+  if records_saved == 0:
+    logger.error("No records were saved to Bronze!")
+    raise RuntimeError("Error scraping bronze records!")
+
+  logger.info(f"Bronze layer complete. Total records streamed: {records_saved}.")
 
 def run_silver_layer(input_path: str, output_path: str) -> None:
   """
@@ -101,8 +113,8 @@ def main():
   gold_output_dir = str(root / 'data' / 'gold')
 
   run_bronze_layer(bronze_output)
-  run_silver_layer(bronze_output, silver_output)
-  run_gold_layer(silver_output, gold_output_dir)
+  # run_silver_layer(bronze_output, silver_output)
+  # run_gold_layer(silver_output, gold_output_dir)
 
 if __name__ == "__main__":
   main()
