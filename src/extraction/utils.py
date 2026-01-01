@@ -1,8 +1,15 @@
 import json
 import os
+import logging
 from typing import List, Any
 
 from extraction.models import BronzeRecord, SilverRecord
+
+logging.basicConfig(
+  level=logging.INFO,
+  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger('utils')
 
 def save_to_jsonl(data: List[Any], filepath: str, mode: str = 'a') -> None:
   """
@@ -19,7 +26,7 @@ def save_to_jsonl(data: List[Any], filepath: str, mode: str = 'a') -> None:
     for record in data:
       f.write(json.dumps(record.to_dict()) + '\n')
   
-  print(f'Succesfully saved {len(data)} records to {filepath}')
+  logger.info(f"Successfully saved {len(data)} record to {filepath}.")
 
 def load_bronze_records(filepath: str) -> List[BronzeRecord]:
   """
@@ -43,7 +50,7 @@ def load_bronze_records(filepath: str) -> List[BronzeRecord]:
 
         records.append(BronzeRecord(**data))
   except FileNotFoundError:
-    print(f'Warning: File {filepath} not found.')
+    logger.warning(f"Warning: File {filepath} not found.")
     return []
 
   return records
