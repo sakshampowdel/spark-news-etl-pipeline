@@ -15,7 +15,7 @@ class ColorFormatter(logging.Formatter):
   bold_red = "\x1b[31;1m"
   reset = "\x1b[0m"
   
-  fmt = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+  fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 
   FORMATS = {
     logging.DEBUG: cyan + fmt + reset,

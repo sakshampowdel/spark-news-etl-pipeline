@@ -51,7 +51,7 @@ def execute_silver_pipeline(input_path: str, output_path: str) -> None:
   Raises:
     RuntimeError: If no records are successfully transformed and persisted.
   """
-  logger.info('Starting Silver Layer...')
+  logger.info('Starting Silver Layer execution...')
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -117,7 +117,7 @@ def main():
 
   execute_bronze_pipeline(BRONZE_PATH)
   execute_silver_pipeline(BRONZE_PATH, SILVER_PATH)
-  run_gold_layer(SILVER_PATH, gold_output_dir)
+  #run_gold_layer(SILVER_PATH, gold_output_dir)
 
 if __name__ == "__main__":
   main()
