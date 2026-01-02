@@ -1,6 +1,15 @@
+import logging
+import json
+import os
 from bs4 import BeautifulSoup
 
 from extraction.models import BronzeRecord, SilverRecord
+
+logging.basicConfig(
+  level=logging.INFO,
+  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger('transform')
 
 def clean_reuters(soup: BeautifulSoup) -> dict[str, str]:
   """
@@ -146,3 +155,23 @@ def transform_bronze_to_silver(bronze: BronzeRecord) -> SilverRecord:
     source=bronze.source,
     ingestion_timestamp=bronze.ingestion_timestamp
   )
+
+def process_bronze_to_silver(bronze_records, file_handle) -> int:
+  seen_urls = set()
+  processed_count = 0
+
+  for record in bronze_records:
+    if record.article_url in seen_urls:
+      continue
+
+    try:
+      silver = transform_bronze_to_silver(record)
+
+      file_handle.write(json.dumps(silver.to_dict()) + '\n')
+
+      seen_urls.add(record.article_url)
+      processed_count += 1
+    except Exception as e:
+      logger.error(f"Error processing {record.article_url}: {e}")
+  
+  return processed_count

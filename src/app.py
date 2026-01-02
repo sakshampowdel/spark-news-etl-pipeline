@@ -2,11 +2,11 @@ from typing import List
 import pathlib
 import logging
 import os
+import json
 
-from extraction.models import BronzeRecord, SilverRecord
 from extraction.scraper import scrape_article_to_bronze
-from extraction.utils import save_to_jsonl, load_bronze_records
-from transformation.cleaner import transform_bronze_to_silver
+from extraction.utils import load_bronze_records
+from transformation.cleaner import process_bronze_to_silver
 from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
 
 logging.basicConfig(
@@ -48,20 +48,18 @@ def run_silver_layer(input_path: str, output_path: str) -> None:
   Raises:
     RuntimeError: If no records are found in the bronze source.
   """
-  print('|--- Starting Silver Layer ---|')
-  bronze_records: List[BronzeRecord] = load_bronze_records(input_path)
+  logger.info('Starting Silver Layer...')
+  os.makedirs(os.path.dirname(output_path), exist_ok=True)
+  bronze_records = load_bronze_records(input_path)
 
-  if not bronze_records:
-    raise RuntimeError('Error grabbing bronze records')
+  with open(output_path, 'a', encoding='utf-8') as f:
+    records_saved: int = process_bronze_to_silver(bronze_records, f)
 
-  unique_map: dict[str, BronzeRecord] = {record.article_url: record for record in bronze_records}
-  unique_records: List[BronzeRecord] = list(unique_map.values())
-
-  silver_records: List[SilverRecord] = (
-    [transform_bronze_to_silver(record) for record in unique_records]
-  )
+  if records_saved == 0:
+    logger.error("No records were saved to Silver!")
+    raise RuntimeError("Error loading Silver records!")
   
-  save_to_jsonl(silver_records, output_path, mode='w')
+  logger.info(f"Silver layer complete. Total records streamed: {records_saved}.")
 
 def run_gold_layer(input_path: str, output_dir: str) -> None:
   """
@@ -113,8 +111,8 @@ def main():
   gold_output_dir = str(root / 'data' / 'gold')
 
   run_bronze_layer(bronze_output)
-  # run_silver_layer(bronze_output, silver_output)
-  # run_gold_layer(silver_output, gold_output_dir)
+  run_silver_layer(bronze_output, silver_output)
+  run_gold_layer(silver_output, gold_output_dir)
 
 if __name__ == "__main__":
   main()
