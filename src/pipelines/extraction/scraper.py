@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from core.models import BronzeRecord
 
-logger = logging.getLogger("bronze.extract")
+logger = logging.getLogger('bronze.extract')
 
 def init_requests_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
   """
