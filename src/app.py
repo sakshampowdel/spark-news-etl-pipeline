@@ -1,8 +1,6 @@
-from typing import List
 import pathlib
 import logging
 import os
-import json
 
 from extraction.scraper import extract_to_bronze
 from extraction.utils import load_bronze_records
