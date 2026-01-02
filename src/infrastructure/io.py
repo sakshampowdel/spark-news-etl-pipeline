@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Generator
 
-from extraction.models import BronzeRecord
+from core.models import BronzeRecord
 
 logger = logging.getLogger('io')
 

@@ -2,10 +2,10 @@ import pathlib
 import logging
 import os
 
-from extraction.scraper import extract_to_bronze
-from extraction.io import stream_bronze_records
-from transformation.cleaner import transform_to_silver
-from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
+from pipelines.extraction.scraper import extract_to_bronze
+from infrastructure.io import stream_bronze_records
+from pipelines.transformation.cleaner import transform_to_silver
+from pipelines.analysis.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
 
 logging.basicConfig(
   level=logging.INFO,

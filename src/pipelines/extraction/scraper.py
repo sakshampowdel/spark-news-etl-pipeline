@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 from typing import Generator, TextIO, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
-from extraction.models import BronzeRecord
+from core.models import BronzeRecord
 
 logger = logging.getLogger("bronze.extract")
 

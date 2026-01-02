@@ -3,7 +3,7 @@ import json
 from typing import Generator, TextIO
 from bs4 import BeautifulSoup
 
-from extraction.models import BronzeRecord, SilverRecord
+from core.models import BronzeRecord, SilverRecord
 
 logger = logging.getLogger('silver.transform')
 
