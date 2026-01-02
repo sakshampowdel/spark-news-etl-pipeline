@@ -9,11 +9,24 @@ from transformation.analyzer import create_spark_session, generate_source_stats,
 
 logging.basicConfig(
   level=logging.INFO,
-  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+  format='%(asctime)s [%(levelname)-8s] %(name)s (%(funcName)s:%(lineno)d): %(message)s',
+  datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("main")
 
 def execute_bronze_pipeline(output_path: str) -> None:
+  """
+  Orchestrates the full extraction process from web sources to Bronze storage.
+
+  Ensures the target directory exists and manages the file buffer during 
+  the extraction phase.
+
+  Args:
+    output_path (str): The file path where raw records will be appended.
+
+  Raises:
+    RuntimeError: If the extraction process results in zero persisted records.
+  """
   logger.info("Starting Bronze Layer execution...")
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -28,6 +41,19 @@ def execute_bronze_pipeline(output_path: str) -> None:
   logger.info(f"Bronze layer complete. Total records persisted: {records_persisted}.")
 
 def execute_silver_pipeline(input_path: str, output_path: str) -> None:
+  """
+  Orchestrates the transformation of raw Bronze data into structured Silver.
+
+  Streams records from the source path, applies transformation logic, and 
+  persists the results to a clean output file.
+
+  Args:
+    input_path (str): The path to the source Bronze .jsonl file.
+    output_path (str): The path where the cleaned Silver .jsonl will be saved.
+
+  Raises:
+    RuntimeError: If no records are successfully transformed and persisted.
+  """
   logger.info('Starting Silver Layer...')
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)

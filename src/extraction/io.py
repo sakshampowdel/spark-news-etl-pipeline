@@ -1,16 +1,24 @@
 import json
-import os
 import logging
-from typing import Generator, List, Any
+from typing import Generator
+
 from extraction.models import BronzeRecord
 
-logging.basicConfig(
-  level=logging.INFO,
-  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
 logger = logging.getLogger('io')
 
 def stream_bronze_records(filepath: str) -> Generator[BronzeRecord, None, None]:
+  """
+  Reads a JSONL file and yields BronzeRecord objects lazily.
+
+  Encapsulates file I/O, JSON parsing, and model instantiation to provide 
+  a clean stream for downstream transformation.
+
+  Args:
+    filepath (str): The path to the source .jsonl file.
+
+  Yields:
+    BronzeRecord: An instantiated data model for each valid line in the file.
+  """
   try:
     with open(filepath, 'r', encoding='utf-8') as buffer:
       for line in buffer:

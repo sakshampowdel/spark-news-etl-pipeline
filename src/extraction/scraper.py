@@ -2,27 +2,44 @@ import requests
 import logging
 import json
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, Browser
+from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 from urllib.parse import urljoin
-from typing import Generator, TextIO
+from typing import Generator, TextIO, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
 from extraction.models import BronzeRecord
 
-logging.basicConfig(
-  level=logging.INFO,
-  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
-logger = logging.getLogger("extraction")
+logger = logging.getLogger("bronze.extract")
 
 def init_requests_session(session: requests.Session, base_url: str, target_url: str) -> requests.Response:
+  """
+  Initializes a session by visiting a base URL before requesting the target data.
+
+  Args:
+    session (requests.Session): The current shared session with custom headers.
+    base_url (str): The homepage URL used to establish initial cookies/handshake.
+    target_url (str): The specific news feed endpoint to scrape.
+
+  Returns:
+    requests.Response: The HTTP response from the target URL.
+  """
   session.get(base_url, timeout=10) 
   response = session.get(target_url, timeout=10)
   response.raise_for_status()
 
   return response
 
-def init_playwright_session(browser: Browser, target_url: str):
+def init_playwright_session(browser: Browser, target_url: str) -> Tuple[BrowserContext, Page]:
+  """
+  Initializes a Playwright browser context with stealth headers and navigates to the target.
+
+  Args:
+    browser (Browser): The launched Playwright browser instance.
+    target_url (str): The specific news feed endpoint to scrape.
+
+  Returns:
+    Tuple[BrowserContext, Page]: The active browser context and the loaded page object.
+  """
   context = browser.new_context(
     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     viewport={'width': 1920, 'height': 1080}
@@ -41,6 +58,15 @@ def init_playwright_session(browser: Browser, target_url: str):
   return context, page
 
 def stream_reuters_feed(session: requests.Session) -> Generator[BronzeRecord, None, None]:
+  """
+  Scrapes the Reuters US World news feed for raw article data.
+
+  Args:
+    session (requests.Session): The active session used for requests.
+
+  Yields:
+    BronzeRecord: A record containing the article URL, raw HTML, and source name.
+  """
   response = init_requests_session(session, 'https://www.reuters.com', 'https://www.reuters.com/world/us/')
   soup = BeautifulSoup(response.text, 'html.parser')
   articles = soup.find_all('li', attrs={'data-testid':'FeedListItem'})
@@ -52,6 +78,15 @@ def stream_reuters_feed(session: requests.Session) -> Generator[BronzeRecord, No
       yield BronzeRecord(article_url, str(article), 'Reuters')
 
 def stream_npr_feed(session: requests.Session) -> Generator[BronzeRecord, None, None]:
+  """
+  Scrapes the NPR Politics section for raw article data.
+
+  Args:
+    session (requests.Session): The active session used for requests.
+
+  Yields:
+    BronzeRecord: A record containing the article URL, raw HTML, and source name.
+  """
   response = init_requests_session(session, 'https://www.npr.org', 'https://www.npr.org/sections/politics')
   soup = BeautifulSoup(response.text, 'html.parser')
   articles = soup.find_all('article', attrs={'class':'item'})
@@ -63,6 +98,15 @@ def stream_npr_feed(session: requests.Session) -> Generator[BronzeRecord, None, 
       yield BronzeRecord(article_url, str(article), 'NPR')
 
 def stream_wapo_feed(browser: Browser) -> Generator[BronzeRecord, None, None]:
+  """
+  Scrapes The Washington Post Politics section using a headless browser.
+
+  Args:
+    browser (Browser): The active Playwright browser instance.
+
+  Yields:
+    BronzeRecord: A record containing the article URL, raw HTML, and source name.
+  """
   context, page = init_playwright_session(browser, 'https://www.washingtonpost.com/politics/')
   
   try:
@@ -82,6 +126,18 @@ def stream_wapo_feed(browser: Browser) -> Generator[BronzeRecord, None, None]:
     context.close()
 
 def extract_to_bronze(buffer: TextIO) -> int:
+  """
+  Orchestrates the extraction process across all defined news sources.
+
+  Uses a ThreadPoolExecutor for lightweight requests and Playwright for 
+  JavaScript-heavy sources. Serializes results directly to the provided buffer.
+
+  Args:
+    buffer (TextIO): The file-like object where records are persisted.
+
+  Returns:
+    int: The total number of records successfully extracted and saved.
+  """
   total_count = 0
   light_sources = [
     stream_reuters_feed,

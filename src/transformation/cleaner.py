@@ -5,13 +5,21 @@ from bs4 import BeautifulSoup
 
 from extraction.models import BronzeRecord, SilverRecord
 
-logging.basicConfig(
-  level=logging.INFO,
-  format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
-logger = logging.getLogger('transform')
+logger = logging.getLogger('silver.transform')
 
 def parse_reuters_html(soup: BeautifulSoup) -> dict[str, str]:
+  """
+  Extracts article metadata from raw Reuters HTML fragments.
+
+  Args:
+    soup (BeautifulSoup): The parsed HTML content of the article list item.
+
+  Returns:
+    dict[str, str]: A dictionary containing the 'title' and 'teaser'.
+
+  Raises:
+    ValueError: If required data-testid elements are missing from the HTML.
+  """
   title_span = soup.find(attrs={'data-testid':'TitleHeading'})
   if not title_span:
     raise ValueError("Reuters: Missing 'TitleHeading' span.")
@@ -26,6 +34,18 @@ def parse_reuters_html(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def parse_npr_html(soup: BeautifulSoup) -> dict[str, str]:
+  """
+  Extracts article metadata from raw NPR HTML fragments.
+
+  Args:
+    soup (BeautifulSoup): The parsed HTML content of the article list item.
+
+  Returns:
+    dict[str, str]: A dictionary containing the 'title' and 'teaser'.
+
+  Raises:
+    ValueError: If the title or teaser elements cannot be located.
+  """
   title_h2 = soup.find('h2', attrs={'class': 'title'})
   if not title_h2:
     raise ValueError("NPR: Missing 'title' h2.")
@@ -47,6 +67,18 @@ def parse_npr_html(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def parse_wapo_html(soup: BeautifulSoup) -> dict[str, str]:
+  """
+  Extracts article metadata from raw Washington Post HTML fragments.
+
+  Args:
+    soup (BeautifulSoup): The parsed HTML content of the article list item.
+
+  Returns:
+    dict[str, str]: A dictionary containing the 'title' and 'teaser'.
+
+  Raises:
+    ValueError: If the card-title or teaser paragraph is missing.
+  """
   title_h3 = soup.find('h3', attrs={'data-testid':'card-title'})
   if not title_h3:
     raise ValueError("The Washington Post: Missing 'card-title' h3.")
@@ -61,6 +93,18 @@ def parse_wapo_html(soup: BeautifulSoup) -> dict[str, str]:
   }
 
 def map_to_silver(bronze: BronzeRecord) -> SilverRecord:
+  """
+  Maps a raw BronzeRecord to a SilverRecord using source-specific parsers.
+
+  Args:
+    bronze (BronzeRecord): The raw record fetched from the Bronze layer.
+
+  Returns:
+    SilverRecord: The validated and structured record.
+
+  Raises:
+    KeyError: If the record source does not have a registered parser.
+  """
   soup = BeautifulSoup(bronze.raw_html, 'html.parser')
 
   parsers = {
@@ -84,6 +128,19 @@ def map_to_silver(bronze: BronzeRecord) -> SilverRecord:
   )
 
 def transform_to_silver(bronze_stream: Generator[BronzeRecord, None, None], buffer: TextIO) -> int:
+  """
+  Orchestrates the transformation of a Bronze data stream into structured Silver.
+
+  Handles deduplication, invokes appropriate parsers, and persists valid 
+  records to the output buffer while logging parsing failures.
+
+  Args:
+    bronze_stream (Generator): A stream of BronzeRecord objects to process.
+    buffer (TextIO): The file-like object where Silver records are persisted.
+
+  Returns:
+    int: The total count of records successfully transformed and persisted.
+  """
   seen_urls = set()
   processed_count = 0
 
