@@ -4,7 +4,7 @@ import logging
 import os
 import json
 
-from extraction.scraper import scrape_article_to_bronze
+from extraction.scraper import extract_to_bronze
 from extraction.utils import load_bronze_records
 from transformation.cleaner import process_bronze_to_silver
 from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
@@ -15,27 +15,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")
 
-def run_bronze_layer(output_path: str) -> None:
-  """
-  Orchestrates the scraping of news articles into structured Bronze records.
-
-  Args:
-    output_path (str): The file path where the .jsonl data will be saved.
-
-  Raises:
-    RuntimeError: If no records are created while scraping the articles.
-  """
+def execute_bronze_pipeline(output_path: str) -> None:
   logger.info("Starting Bronze Layer...")
+
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
   with open(output_path, 'a', encoding='utf-8') as f:
-    records_saved: int = scrape_article_to_bronze(f)
+    records_extracted: int = extract_to_bronze(f)
 
-  if records_saved == 0:
-    logger.error("No records were saved to Bronze!")
-    raise RuntimeError("Error scraping bronze records!")
+  if records_extracted == 0:
+    logger.error("No records were extracted to Bronze!")
+    raise RuntimeError("Bronze extraction failed: Zero records saved.")
 
-  logger.info(f"Bronze layer complete. Total records streamed: {records_saved}.")
+  logger.info(f"Bronze layer complete. Total records persisted: {records_extracted}.")
 
 def run_silver_layer(input_path: str, output_path: str) -> None:
   """
@@ -110,7 +102,7 @@ def main():
   # '../data/gold/'
   gold_output_dir = str(root / 'data' / 'gold')
 
-  run_bronze_layer(bronze_output)
+  execute_bronze_pipeline(bronze_output)
   run_silver_layer(bronze_output, silver_output)
   run_gold_layer(silver_output, gold_output_dir)
 
