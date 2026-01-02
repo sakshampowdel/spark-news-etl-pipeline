@@ -3,7 +3,7 @@ import logging
 import os
 
 from extraction.scraper import extract_to_bronze
-from extraction.utils import load_bronze_records
+from extraction.io import stream_bronze_records
 from transformation.cleaner import transform_to_silver
 from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
 
@@ -32,7 +32,7 @@ def execute_silver_pipeline(input_path: str, output_path: str) -> None:
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-  bronze_stream = load_bronze_records(input_path)
+  bronze_stream = stream_bronze_records(input_path)
 
   with open(output_path, 'w', encoding='utf-8') as buffer:
     records_persisted: int = transform_to_silver(bronze_stream, buffer)
