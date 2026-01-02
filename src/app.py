@@ -4,7 +4,7 @@ import os
 
 from extraction.scraper import extract_to_bronze
 from extraction.utils import load_bronze_records
-from transformation.cleaner import process_bronze_to_silver
+from transformation.cleaner import transform_to_silver
 from transformation.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
 
 logging.basicConfig(
@@ -14,42 +14,34 @@ logging.basicConfig(
 logger = logging.getLogger("main")
 
 def execute_bronze_pipeline(output_path: str) -> None:
-  logger.info("Starting Bronze Layer...")
+  logger.info("Starting Bronze Layer execution...")
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-  with open(output_path, 'a', encoding='utf-8') as f:
-    records_extracted: int = extract_to_bronze(f)
+  with open(output_path, 'a', encoding='utf-8') as buffer:
+    records_persisted: int = extract_to_bronze(buffer)
 
-  if records_extracted == 0:
+  if records_persisted == 0:
     logger.error("No records were extracted to Bronze!")
-    raise RuntimeError("Bronze extraction failed: Zero records saved.")
+    raise RuntimeError("Bronze pipeline failed: Zero records saved.")
 
-  logger.info(f"Bronze layer complete. Total records persisted: {records_extracted}.")
+  logger.info(f"Bronze layer complete. Total records persisted: {records_persisted}.")
 
-def run_silver_layer(input_path: str, output_path: str) -> None:
-  """
-  Orchestrates the transformation of raw Bronze HTML records into structured Silver records.
-
-  Args:
-    input_path (str): The file path to the raw .jsonl bronze data.
-    output_path (str): The file path where the cleaned .jsonl data will be saved.
-
-  Raises:
-    RuntimeError: If no records are found in the bronze source.
-  """
+def execute_silver_pipeline(input_path: str, output_path: str) -> None:
   logger.info('Starting Silver Layer...')
+
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
-  bronze_records = load_bronze_records(input_path)
 
-  with open(output_path, 'a', encoding='utf-8') as f:
-    records_saved: int = process_bronze_to_silver(bronze_records, f)
+  bronze_stream = load_bronze_records(input_path)
 
-  if records_saved == 0:
-    logger.error("No records were saved to Silver!")
-    raise RuntimeError("Error loading Silver records!")
+  with open(output_path, 'w', encoding='utf-8') as buffer:
+    records_persisted: int = transform_to_silver(bronze_stream, buffer)
+
+  if records_persisted == 0:
+    logger.error("No records were transformed to Silver!")
+    raise RuntimeError("Silver pipeline failed: Zero records persisted.")
   
-  logger.info(f"Silver layer complete. Total records streamed: {records_saved}.")
+  logger.info(f"Silver layer complete. Total records persisted: {records_persisted}.")
 
 def run_gold_layer(input_path: str, output_dir: str) -> None:
   """
@@ -92,17 +84,17 @@ def main():
   root = pathlib.Path(__file__).parent.parent.resolve()
 
   # '../data/bronze/news_traffic_raw.jsonl'
-  bronze_output = str(root / 'data' / 'bronze' / 'news_traffic_raw.jsonl')
+  BRONZE_PATH = str(root / 'data' / 'bronze' / 'news_traffic_raw.jsonl')
 
   # '../data/silver/news_traffic_cleaned.jsonl'
-  silver_output = str(root / 'data' / 'silver' / 'news_traffic_cleaned.jsonl')
+  SILVER_PATH = str(root / 'data' / 'silver' / 'news_traffic_cleaned.jsonl')
 
   # '../data/gold/'
   gold_output_dir = str(root / 'data' / 'gold')
 
-  execute_bronze_pipeline(bronze_output)
-  run_silver_layer(bronze_output, silver_output)
-  run_gold_layer(silver_output, gold_output_dir)
+  execute_bronze_pipeline(BRONZE_PATH)
+  execute_silver_pipeline(BRONZE_PATH, SILVER_PATH)
+  run_gold_layer(SILVER_PATH, gold_output_dir)
 
 if __name__ == "__main__":
   main()
