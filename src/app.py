@@ -5,7 +5,7 @@ import os
 from pipelines.extraction.scraper import extract_to_bronze
 from infrastructure.io import stream_bronze_records
 from pipelines.transformation.cleaner import transform_to_silver
-from pipelines.analysis.analyzer import create_spark_session, generate_source_stats, generate_top_keywords
+from pipelines.analysis.analyzer import create_spark_session, SILVER_SCHEMA, generate_top_keywords
 from core.logging_utils import setup_logging
 
 setup_logging()
@@ -51,7 +51,7 @@ def execute_silver_pipeline(input_path: str, output_path: str) -> None:
   Raises:
     RuntimeError: If no records are successfully transformed and persisted.
   """
-  logger.info('Starting Silver Layer execution...')
+  logger.info("Starting Silver Layer execution...")
 
   os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -66,38 +66,39 @@ def execute_silver_pipeline(input_path: str, output_path: str) -> None:
   
   logger.info(f"Silver layer complete. Total records persisted: {records_persisted}.")
 
-def run_gold_layer(input_path: str, output_dir: str) -> None:
+def execute_gold_pipeline(input_path: str, output_path: str) -> None:
   """
-  Orchestrates the aggregation of Silver records into Gold analytical tables using Spark.
-
-  Args:
-    input_path (str): The file path to the cleaned .jsonl silver data.
-    output_dir (str): The directory where the Gold Parquet tables will be saved.
+    Handles the I/O: Reads Silver JSONL, runs analysis, writes Gold Parquet.
   """
-  print('|--- Starting Gold Layer ---|')
+  logger.info("Starting Gold Layer execution...")
+  
+  # Initialize the session
   spark = create_spark_session()
+  spark.sparkContext.setLogLevel("ERROR")
   
   try:
-    silver_df = spark.read.json(input_path)
+    # Step 1: Read the data using the schema for efficiency
+    # This is where Spark looks at your 'data/silver' folder
+    silver_df = spark.read.schema(SILVER_SCHEMA).json(input_path)
     
     if silver_df.isEmpty():
-      print("Warning: Silver layer is empty.")
+      logger.warning("Silver layer is empty. Skipping analysis.")
       return
 
-    # Write Daily Stats - Partitioned by Date
-    print("Processing: Daily Source Stats...")
-    stats_df = generate_source_stats(silver_df)
-    stats_df.write.mode("overwrite").partitionBy("date").parquet(f"{output_dir}/daily_source_stats")
-
-    # Write Keyword Trends
-    print("Processing: Keyword Trends...")
+    # Step 2: Run the Analysis logic from analyzer.py
+    logger.info("Processing Keyword Trends...")
     keywords_df = generate_top_keywords(silver_df)
-    keywords_df.write.mode("overwrite").parquet(f"{output_dir}/keyword_trends")
+
+    # Step 3: Write to Parquet (The Gold Standard)
+    # This creates the 'data/gold/keyword_trends' folder
+    keywords_df.write.mode("overwrite").parquet(f"{output_path}/keyword_trends")
     
-    print("\n--- TOP 10 TRENDING KEYWORDS ---")
+    # Step 4: Show the results in the terminal for you to see!
+    print("\n--- TOP TRENDING KEYWORDS ---")
     keywords_df.show()
-            
+        
   finally:
+    # Crucial: Close the Spark session to free up RAM
     spark.stop()
 
 def main():
@@ -113,11 +114,11 @@ def main():
   SILVER_PATH = str(root / 'data' / 'silver' / 'news_traffic_cleaned.jsonl')
 
   # '../data/gold/'
-  gold_output_dir = str(root / 'data' / 'gold')
+  GOLD_PATH = str(root / 'data' / 'gold')
 
   execute_bronze_pipeline(BRONZE_PATH)
   execute_silver_pipeline(BRONZE_PATH, SILVER_PATH)
-  #run_gold_layer(SILVER_PATH, gold_output_dir)
+  execute_gold_pipeline(SILVER_PATH, GOLD_PATH)
 
 if __name__ == "__main__":
   main()
