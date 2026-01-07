@@ -72,33 +72,25 @@ def execute_gold_pipeline(input_path: str, output_path: str) -> None:
   """
   logger.info("Starting Gold Layer execution...")
   
-  # Initialize the session
   spark = create_spark_session()
   spark.sparkContext.setLogLevel("ERROR")
   
   try:
-    # Step 1: Read the data using the schema for efficiency
-    # This is where Spark looks at your 'data/silver' folder
     silver_df = spark.read.schema(SILVER_SCHEMA).json(input_path)
     
     if silver_df.isEmpty():
       logger.warning("Silver layer is empty. Skipping analysis.")
       return
 
-    # Step 2: Run the Analysis logic from analyzer.py
     logger.info("Processing Keyword Trends...")
     keywords_df = generate_top_keywords(silver_df)
 
-    # Step 3: Write to Parquet (The Gold Standard)
-    # This creates the 'data/gold/keyword_trends' folder
     keywords_df.write.mode("overwrite").parquet(f"{output_path}/keyword_trends")
     
-    # Step 4: Show the results in the terminal for you to see!
     print("\n--- TOP TRENDING KEYWORDS ---")
     keywords_df.show()
         
   finally:
-    # Crucial: Close the Spark session to free up RAM
     spark.stop()
 
 def main():
