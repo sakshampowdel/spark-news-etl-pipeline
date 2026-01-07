@@ -29,7 +29,19 @@ def create_spark_session():
   )
 
 def generate_top_keywords(df: DataFrame, limit: int = 20) -> DataFrame:
-  """The transformation logic: Words -> Counts."""
+  """
+  Analyzes article titles to identify top trending keywords across news sources.
+
+  Performs text normalization, tokenization, stop-word removal, and pivots 
+  the results to show keyword frequency per publisher.
+
+  Args:
+    df (DataFrame): The Silver layer Spark DataFrame containing article metadata.
+    limit (int): The number of top keywords to return. Defaults to 20.
+
+  Returns:
+    DataFrame: A wide-format DataFrame with keywords and counts per source.
+  """
   cleaned_df = df.withColumn(
     "cleaned_title", 
     F.regexp_replace(F.lower(F.col("title")), r"[^\w\s]", " ")

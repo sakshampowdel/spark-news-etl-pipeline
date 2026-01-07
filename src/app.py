@@ -68,7 +68,14 @@ def execute_silver_pipeline(input_path: str, output_path: str) -> None:
 
 def execute_gold_pipeline(input_path: str, output_path: str) -> None:
   """
-    Handles the I/O: Reads Silver JSONL, runs analysis, writes Gold Parquet.
+  Orchestrates the analysis of Silver data and persists the Gold results.
+
+  Initializes the Spark environment, reads structured Silver data, 
+  runs trend analysis, and saves the final output as Parquet.
+
+  Args:
+    input_path (str): The path to the source Silver JSONL directory/file.
+    output_path (str): The base path where Gold Parquet files will be saved.
   """
   logger.info("Starting Gold Layer execution...")
   
