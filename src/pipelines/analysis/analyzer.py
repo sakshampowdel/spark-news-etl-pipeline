@@ -63,7 +63,6 @@ def generate_top_keywords(df: DataFrame, limit: int = 20) -> DataFrame:
     .filter(F.length(F.col("word")) > 2)
   )
   
-
   return (
     exploded_df
     .groupBy("word")
